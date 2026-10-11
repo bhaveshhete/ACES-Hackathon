@@ -69,6 +69,21 @@ Visit [http://localhost:3000](http://localhost:3000) to start using LendMatch!
 
 ---
 
+## 🚀 Deploy to Vercel (1-Click)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbhaveshhete%2FACES-Hackathon)
+
+### Deploying via Vercel Dashboard:
+1. Go to [vercel.com/new](https://vercel.com/new).
+2. Import **`bhaveshhete/ACES-Hackathon`**.
+3. Framework Preset: **Next.js** (auto-detected).
+4. Click **Deploy** — your app is live in ~60 seconds!
+
+*(Optional Environment Variable)*:
+- `HF_PREDICT_URL`: `https://jensbender-loan-default-prediction-app.hf.space/api/predict` (defaults to this automatically if omitted).
+
+---
+
 ## 🧪 Testing & Code Quality
 
 This project is fully tested with **105 automated unit and integration tests**:
