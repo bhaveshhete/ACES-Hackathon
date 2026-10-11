@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LendMatch — System Architecture (Phase 2 Implemented System)</title>
+  <style>
+    :root {
+      --bg: #0B1220;
+      --surface: #111827;
+      --surface-subtle: #1E293B;
+      --border: #334155;
+      --text: #F1F5F9;
+      --text-muted: #94A3B8;
+      --blue: #3B82F6;
+      --blue-light: #60A5FA;
+      --gold: #D6A84F;
+      --coral: #F87171;
+      --green: #34D399;
+      --purple: #A78BFA;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+    .title-area h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .title-area p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .search-box {
+      background-color: var(--surface-subtle);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      width: 240px;
+      outline: none;
+    }
+    .search-box:focus { border-color: var(--blue); }
+    .btn {
+      background-color: var(--surface-subtle);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+    .btn:hover { background-color: var(--border); }
+    .viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      cursor: grab;
+      background-image: radial-gradient(circle, #1E293B 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .viewport:active { cursor: grabbing; }
+    .canvas {
+      position: absolute;
+      transform-origin: 0 0;
+      transition: transform 0.05s ease-out;
+      width: 1750px;
+      height: 1100px;
+      padding: 40px;
+    }
+    .layer-group {
+      position: absolute;
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      background-color: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(4px);
+    }
+    .layer-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: none;
+      font-weight: 600;
+    }
+    .badge-present {
+      background-color: rgba(59, 130, 246, 0.2);
+      color: var(--blue-light);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+    .badge-ml {
+      background-color: rgba(167, 139, 250, 0.2);
+      color: var(--purple);
+      border: 1px solid rgba(167, 139, 250, 0.5);
+    }
+    .node {
+      position: absolute;
+      background-color: #172554;
+      border: 1px solid #1E3A8A;
+      border-radius: 8px;
+      padding: 10px 14px;
+      width: 230px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      z-index: 2;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .node:hover {
+      transform: translateY(-2px);
+      border-color: var(--blue);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.25);
+    }
+    .node.highlight {
+      border-color: var(--gold) !important;
+      box-shadow: 0 0 16px rgba(214, 168, 79, 0.6) !important;
+    }
+    .node.dimmed { opacity: 0.25; }
+    .node-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .node-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .node-type {
+      font-size: 9px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--blue-light);
+      background-color: rgba(59, 130, 246, 0.15);
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    .node-file {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      margin-bottom: 6px;
+    }
+    .node-desc { font-size: 11px; color: #CBD5E1; line-height: 1.4; }
+    .drawer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 400px;
+      height: 100%;
+      background-color: var(--surface);
+      border-left: 1px solid var(--border);
+      padding: 24px;
+      overflow-y: auto;
+      z-index: 20;
+      transform: translateX(100%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: -8px 0 24px rgba(0, 0, 0, 0.5);
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .drawer-close:hover { color: var(--text); }
+    .drawer h2 { font-size: 16px; margin-bottom: 4px; }
+    .drawer .file-badge {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--gold);
+      background: rgba(214, 168, 79, 0.1);
+      padding: 3px 6px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    .drawer section { margin-bottom: 18px; }
+    .drawer section h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .drawer section p, .drawer section li {
+      font-size: 12px;
+      color: #E2E8F0;
+      line-height: 1.5;
+    }
+    .drawer ul { padding-left: 16px; }
+    .legend {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background-color: rgba(17, 24, 39, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 11px;
+      display: flex;
+      gap: 16px;
+      z-index: 10;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-area">
+      <h1>LendMatch — Phase 3 System Architecture</h1>
+      <p>Interactive End-to-End Flow: UI Presets → Match Orchestration API → HF Model Pipeline → Financial Math</p>
+    </div>
+    <div class="toolbar">
+      <input type="text" id="searchBox" class="search-box" placeholder="Search components, endpoints, logic..." />
+      <button class="btn" id="zoomInBtn">+</button>
+      <button class="btn" id="zoomOutBtn">-</button>
+      <button class="btn" id="resetBtn">Reset View</button>
+    </div>
+  </header>
+
+  <div class="viewport" id="viewport">
+    <div class="canvas" id="canvas">
+      <!-- LAYER 1: UI Presentation Layer -->
+      <div class="layer-group" style="left: 40px; top: 40px; width: 560px; height: 520px;">
+        <div class="layer-title" style="color: var(--blue-light);">
+          1. UI Presentation Layer (Next.js 14)
+          <span class="badge badge-present">Active</span>
+        </div>
+
+        <div class="node" id="node-page" style="left: 20px; top: 40px;" data-node="page">
+          <div class="node-header"><span class="node-name">Dashboard Page</span><span class="node-type">View</span></div>
+          <div class="node-file">src/app/page.tsx</div>
+          <div class="node-desc">Client orchestrator managing investor budget, risk appetite, live ML predictions toggle, and recommendation state.</div>
+        </div>
+
+        <div class="node" id="node-banner" style="left: 290px; top: 40px;" data-node="banner">
+          <div class="node-header"><span class="node-name">ModelStatusBanner</span><span class="node-type">Component</span></div>
+          <div class="node-file">src/components/ModelStatusBanner.tsx</div>
+          <div class="node-desc">Displays live HF model connectivity, measured latency, fallback alerts, and toggle between ML vs Demo baseline.</div>
+        </div>
+
+        <div class="node" id="node-controls" style="left: 20px; top: 180px;" data-node="controls">
+          <div class="node-header"><span class="node-name">InvestorControls</span><span class="node-type">Component</span></div>
+          <div class="node-file">src/components/InvestorControls.tsx</div>
+          <div class="node-desc">Budget input with validation and 0-100 risk appetite slider that shifts weights between safety and return.</div>
+        </div>
+
+        <div class="node" id="node-summary" style="left: 20px; top: 320px;" data-node="summary">
+          <div class="node-header"><span class="node-name">PortfolioSummary</span><span class="node-type">Component</span></div>
+          <div class="node-file">src/components/PortfolioSummary.tsx</div>
+          <div class="node-desc">Calculated metrics: allocated capital, unallocated balance, eligible count, portfolio ROI.</div>
+        </div>
+
+        <div class="node" id="node-card" style="left: 290px; top: 180px;" data-node="card">
+          <div class="node-header"><span class="node-name">OpportunityCard</span><span class="node-type">Component</span></div>
+          <div class="node-file">src/components/OpportunityCard.tsx</div>
+          <div class="node-desc">Displays recommendation card with ML prediction badges ('No Default' / 'Default'), allocation, and match score meter.</div>
+        </div>
+
+        <div class="node" id="node-detail" style="left: 290px; top: 320px;" data-node="detail">
+          <div class="node-header"><span class="node-name">OpportunityDetail</span><span class="node-type">Component</span></div>
+          <div class="node-file">src/components/OpportunityDetail.tsx</div>
+          <div class="node-desc">Full transparency: applicant demographic inputs, ML metadata, mathematical formula steps, and risk caveats.</div>
+        </div>
+      </div>
+
+      <!-- LAYER 2: Backend API Layer -->
+      <div class="layer-group" style="left: 630px; top: 40px; width: 520px; height: 520px;">
+        <div class="layer-title" style="color: var(--green);">
+          2. Server-Side Backend API (Node.js & FastAPI)
+          <span class="badge badge-present">Server Active</span>
+        </div>
+
+        <div class="node" id="node-api-match" style="left: 20px; top: 40px;" data-node="api-match">
+          <div class="node-header"><span class="node-name">Match Orchestration</span><span class="node-type">Endpoint</span></div>
+          <div class="node-file">src/app/api/match/route.ts</div>
+          <div class="node-desc">POST /api/match - Full server-side pipeline: validates inputs, queries HF model, filters hurdle return, ranks, and allocates.</div>
+        </div>
+
+        <div class="node" id="node-api-opportunities" style="left: 260px; top: 40px;" data-node="api-opportunities">
+          <div class="node-header"><span class="node-name">Opportunities API</span><span class="node-type">Endpoint</span></div>
+          <div class="node-file">src/app/api/opportunities/route.ts</div>
+          <div class="node-desc">GET /api/opportunities - Serves sanitized synthetic listings with status and minTicket filtering for consumers.</div>
+        </div>
+
+        <div class="node" id="node-api-status" style="left: 20px; top: 180px;" data-node="api-status">
+          <div class="node-header"><span class="node-name">Model Status API</span><span class="node-type">Endpoint</span></div>
+          <div class="node-file">src/app/api/model/status/route.ts</div>
+          <div class="node-desc">GET /api/model/status - Tests HF endpoint health, measures ping latency, and returns safe service metadata.</div>
+        </div>
+
+        <div class="node" id="node-api-predict" style="left: 20px; top: 320px;" data-node="api-predict">
+          <div class="node-header"><span class="node-name">Prediction API</span><span class="node-type">Endpoint</span></div>
+          <div class="node-file">src/app/api/predict/route.ts</div>
+          <div class="node-desc">POST /api/predict - Validates single applicant profile and executes model adapter inference with timeout.</div>
+        </div>
+
+        <div class="node" id="node-fastapi" style="left: 260px; top: 180px;" data-node="fastapi">
+          <div class="node-header"><span class="node-name">FastAPI Backend</span><span class="node-type">Python Ref</span></div>
+          <div class="node-file">backend/main.py</div>
+          <div class="node-desc">Standalone Python FastAPI implementation providing the exact same contract with Pydantic validation.</div>
+        </div>
+      </div>
+
+      <!-- LAYER 3: Model Adapter & Hugging Face Pipeline -->
+      <div class="layer-group" style="left: 1180px; top: 40px; width: 520px; height: 520px;">
+        <div class="layer-title" style="color: var(--purple);">
+          3. Model Adapter & ML Inference Pipeline
+          <span class="badge badge-ml">ML Pipeline</span>
+        </div>
+
+        <div class="node" id="node-adapter" style="left: 20px; top: 60px;" data-node="adapter">
+          <div class="node-header"><span class="node-name">HF Model Adapter</span><span class="node-type">Adapter</span></div>
+          <div class="node-file">src/lib/model-adapter.ts</div>
+          <div class="node-desc">Hosted adapter with strict validation, 8000ms AbortController timeout, in-memory caching, and provenance tagging.</div>
+        </div>
+
+        <div class="node" id="node-hf-space" style="left: 260px; top: 60px;" data-node="hf-space">
+          <div class="node-header"><span class="node-name">Hugging Face Space API</span><span class="node-type">Live Model</span></div>
+          <div class="node-file">jensbender-loan-default...hf.space</div>
+          <div class="node-desc">Verified hosted scikit-learn Random Forest pipeline trained on 252k loan records; returns default probabilities.</div>
+        </div>
+
+        <div class="node" id="node-cache" style="left: 20px; top: 220px;" data-node="cache">
+          <div class="node-header"><span class="node-name">In-Memory Cache</span><span class="node-type">Cache</span></div>
+          <div class="node-file">src/lib/model-adapter.ts (Cache)</div>
+          <div class="node-desc">TTL-bounded cache keyed by applicant profile feature hash to eliminate redundant upstream inference requests.</div>
+        </div>
+      </div>
+
+      <!-- LAYER 4: Financial Calculation & Allocation Core -->
+      <div class="layer-group" style="left: 40px; top: 600px; width: 1110px; height: 420px;">
+        <div class="layer-title" style="color: var(--gold);">
+          4. Financial Engine, Ranking, & Allocation (Pure Core)
+          <span class="badge badge-present">Pure TypeScript</span>
+        </div>
+
+        <div class="node" id="node-eligibility" style="left: 20px; top: 50px;" data-node="eligibility">
+          <div class="node-header"><span class="node-name">Eligibility Filter</span><span class="node-type">Module</span></div>
+          <div class="node-file">src/lib/eligibility.ts</div>
+          <div class="node-desc">Filters opportunities requiring open status, capacity > 0, budget >= minTicket, and non-corrupt risk inputs.</div>
+        </div>
+
+        <div class="node" id="node-finance" style="left: 280px; top: 50px;" data-node="finance">
+          <div class="node-header"><span class="node-name">Finance Formulas</span><span class="node-type">Module</span></div>
+          <div class="node-file">src/lib/finance.ts</div>
+          <div class="node-desc">Simple interest expected payout, profit, ROI, clamp return score, safety score, and risk-weighted match scoring.</div>
+        </div>
+
+        <div class="node" id="node-allocation" style="left: 540px; top: 50px;" data-node="allocation">
+          <div class="node-header"><span class="node-name">Allocation Engine</span><span class="node-type">Module</span></div>
+          <div class="node-file">src/lib/allocation.ts</div>
+          <div class="node-desc">Deterministic greedy allocation capping recommendations at Top 5, respecting per-opportunity capacity and total budget.</div>
+        </div>
+
+        <div class="node" id="node-data" style="left: 800px; top: 50px;" data-node="data">
+          <div class="node-header"><span class="node-name">Synthetic Dataset</span><span class="node-type">Data Store</span></div>
+          <div class="node-file">src/lib/data.ts</div>
+          <div class="node-desc">12 deterministic records with distinct loan terms and verified applicant demographic features.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background-color: var(--blue);"></div><span>UI Presentation (Next.js 14)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background-color: var(--green);"></div><span>Server Backend API Routes</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background-color: var(--purple);"></div><span>Hugging Face ML Inference</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background-color: var(--gold);"></div><span>Pure Financial Math & Allocation</span></div>
+  </div>
+
+  <!-- Detail Drawer -->
+  <aside class="drawer" id="drawer" aria-label="Component specifications">
+    <button class="drawer-close" id="drawerClose">&times;</button>
+    <h2 id="drawerTitle">Component Details</h2>
+    <span class="file-badge" id="drawerFile">path/to/file.ts</span>
+
+    <section>
+      <h3>Role & Responsibilities</h3>
+      <p id="drawerDesc">Description</p>
+    </section>
+
+    <section>
+      <h3>Public Interface & Key Methods</h3>
+      <ul id="drawerMethods"></ul>
+    </section>
+
+    <section>
+      <h3>Guarantees & Constraints</h3>
+      <p id="drawerConstraints">Constraints</p>
+    </section>
+  </aside>
+
+  <script>
+    const NODE_DETAILS = {
+      "page": {
+        title: "Dashboard Page",
+        file: "src/app/page.tsx",
+        desc: "Main client orchestrator managing investor budget, risk appetite, live ML predictions toggle, and recommendation state.",
+        methods: ["fetchModelPredictions() - queries backend batch endpoint", "useMemo(activeOpportunities) - merges live predictions with listings", "useMemo(plan) - re-runs allocation engine"],
+        constraints: "Never mixes loan terms into applicant demographic features. Allows user to toggle between live model and demo baseline."
+      },
+      "banner": {
+        title: "ModelStatusBanner",
+        file: "src/components/ModelStatusBanner.tsx",
+        desc: "Displays live HF model connectivity, measured latency, fallback alerts, and toggle between ML vs Demo baseline.",
+        methods: ["onToggleLiveModel() - enables/disables ML predictions", "onRefresh() - re-tests upstream connectivity and latency"],
+        constraints: "Never displays an AI badge when upstream service is unavailable."
+      },
+      "controls": {
+        title: "InvestorControls",
+        file: "src/components/InvestorControls.tsx",
+        desc: "Financial parameter inputs allowing investors to tune budget capital and risk preferences.",
+        methods: ["onBudgetChange(raw: string) - parses currency and validates against negative/NaN numbers", "onRiskAppetiteChange(value: number) - shifts ranking weight"],
+        constraints: "Enforces accessible ARIA attributes on inputs."
+      },
+      "summary": {
+        title: "PortfolioSummary",
+        file: "src/components/PortfolioSummary.tsx",
+        desc: "Displays aggregated metrics for the proposed allocation plan.",
+        methods: ["Calculates total proposed capital deployed", "Surfaces unallocated balance and explanation", "Computes portfolio ROI"],
+        constraints: "Never displays fabricated account balances or unearned portfolio returns."
+      },
+      "card": {
+        title: "OpportunityCard",
+        file: "src/components/OpportunityCard.tsx",
+        desc: "Displays recommendation card with ML prediction badges ('No Default' / 'Default'), allocation, and match score meter.",
+        methods: ["Renders rank, purpose badge, allocation, ROI, and match meter", "Renders model provenance badge"],
+        constraints: "Tabular numerals ensure numbers align vertically."
+      },
+      "detail": {
+        title: "OpportunityDetail",
+        file: "src/components/OpportunityDetail.tsx",
+        desc: "Full transparency: applicant demographic inputs, ML metadata, mathematical formula steps, and risk caveats.",
+        methods: ["Displays applicant features submitted to model", "Exposes classification labels and confidence breakdown", "Discloses 252k training set origin and non-guarantee caveats"],
+        constraints: "Clearly separates loan parameters from applicant demographic features."
+      },
+      "api-status": {
+        title: "Model Status API Route",
+        file: "src/app/api/model/status/route.ts",
+        desc: "GET /api/model/status - Tests HF endpoint health, measures ping latency, and returns safe service metadata.",
+        methods: ["GET() -> ModelStatusResponse ({ status, modelId, latencyMs, notes })"],
+        constraints: "Keeps server secrets protected and enforces bounded timeout."
+      },
+      "api-predict": {
+        title: "Prediction API Route",
+        file: "src/app/api/predict/route.ts",
+        desc: "POST /api/predict - Validates single applicant profile and executes model adapter inference with timeout.",
+        methods: ["POST(req: NextRequest) -> PredictionResult ({ status, defaultProbability, predictionLabel, latencyMs })"],
+        constraints: "Rejects invalid demographic ranges with HTTP 422 before calling upstream."
+      },
+      "api-batch": {
+        title: "Batch Prediction API Route",
+        file: "src/app/api/predict/batch/route.ts",
+        desc: "POST /api/predict/batch - Concurrently scores opportunities across the applicant dataset with bounded limits.",
+        methods: ["POST(req: NextRequest) -> { results: PredictionResult[], count: number }"],
+        constraints: "Caps maximum batch size at 25 items to protect resources."
+      },
+      "fastapi": {
+        title: "FastAPI Backend Reference",
+        file: "backend/main.py",
+        desc: "Standalone Python FastAPI implementation providing the exact same contract with Pydantic validation.",
+        methods: ["GET /health", "GET /api/model/status", "POST /api/predict", "POST /api/predict/batch"],
+        constraints: "Compatible with identical JSON payloads and status codes."
+      },
+      "adapter": {
+        title: "Hosted Hugging Face Model Adapter",
+        file: "src/lib/model-adapter.ts",
+        desc: "Hosted adapter with strict validation, 8000ms AbortController timeout, in-memory caching, and provenance tagging.",
+        methods: ["validateApplicantProfile(profile)", "predict(borrowerId, profile)", "predictBatch(items)", "checkStatus()"],
+        constraints: "Throws no unhandled exceptions; cleanly maps network errors to 'unavailable' and missing data to 'insufficient_input'."
+      },
+      "hf-space": {
+        title: "Hugging Face Space API Endpoint",
+        file: "https://jensbender-loan-default-prediction-app.hf.space/api/predict",
+        desc: "Verified hosted scikit-learn Random Forest pipeline trained on 252k loan records; returns default probabilities.",
+        methods: ["POST /api/predict with PipelineInput schema -> PredictionResponse"],
+        constraints: "External dependency; called exclusively from server-side."
+      },
+      "cache": {
+        title: "In-Memory Prediction Cache",
+        file: "src/lib/model-adapter.ts (Cache)",
+        desc: "TTL-bounded cache keyed by applicant profile feature hash to eliminate redundant upstream inference requests.",
+        methods: ["get(key) -> ModelPredictionResult | null", "set(key, result)", "getKey(borrowerId, profile)"],
+        constraints: "15 minute TTL; max 100 entries with LRU eviction."
+      },
+      "eligibility": {
+        title: "Eligibility Filter Module",
+        file: "src/lib/eligibility.ts",
+        desc: "Filters opportunities requiring open status, capacity > 0, budget >= minTicket, and non-corrupt risk inputs.",
+        methods: ["checkEligibility(opp, budget)", "filterEligible(opportunities, budget)"],
+        constraints: "Rejects opportunities with NaN default probabilities or non-finite recovery rates."
+      },
+      "finance": {
+        title: "Financial Calculation Engine",
+        file: "src/lib/finance.ts",
+        desc: "Pure function financial calculations based on simple interest and risk-weighted match scoring.",
+        methods: ["calcFinancials(inputs)", "calcRiskScore(PD)", "calcReturnScore(roi)", "calcMatchScore(PD, roi, fit, slider)"],
+        constraints: "Throws on non-finite, out-of-range, or negative allocation inputs."
+      },
+      "allocation": {
+        title: "Greedy Budget-Constrained Allocation",
+        file: "src/lib/allocation.ts",
+        desc: "Deterministic greedy allocation capping recommendations at Top 5, respecting per-opportunity capacity and total budget.",
+        methods: ["rankOpportunities(eligible, budget, riskAppetite)", "allocate(ranked, budget)", "buildAllocationPlan(...)"],
+        constraints: "Caps recommendations at Top 5. Never exceeds remaining funding or investor budget."
+      },
+      "data": {
+        title: "Synthetic Dataset",
+        file: "src/lib/data.ts",
+        desc: "12 deterministic records with distinct loan terms and verified applicant demographic features.",
+        methods: ["BORROWER_OPPORTUNITIES: BorrowerOpportunity[]"],
+        constraints: "Strictly synthetic; separates loan terms from demographic features."
+      }
+    };
+
+    let scale = 0.85;
+    let panX = 40;
+    let panY = 20;
+    let isPanning = false;
+    let startX = 0;
+    let startY = 0;
+
+    const viewport = document.getElementById("viewport");
+    const canvas = document.getElementById("canvas");
+    const drawer = document.getElementById("drawer");
+
+    function updateTransform() {
+      canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    }
+    updateTransform();
+
+    viewport.addEventListener("mousedown", (e) => {
+      if (e.target.closest(".node") || e.target.closest(".drawer")) return;
+      isPanning = true;
+      startX = e.clientX - panX;
+      startY = e.clientY - panY;
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!isPanning) return;
+      panX = e.clientX - startX;
+      panY = e.clientY - startY;
+      updateTransform();
+    });
+
+    window.addEventListener("mouseup", () => { isPanning = false; });
+
+    viewport.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+      scale = Math.min(Math.max(0.4, scale * zoomFactor), 2.0);
+      updateTransform();
+    });
+
+    document.getElementById("zoomInBtn").addEventListener("click", () => {
+      scale = Math.min(2.0, scale * 1.15);
+      updateTransform();
+    });
+    document.getElementById("zoomOutBtn").addEventListener("click", () => {
+      scale = Math.max(0.4, scale * 0.85);
+      updateTransform();
+    });
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      scale = 0.85;
+      panX = 40;
+      panY = 20;
+      updateTransform();
+    });
+
+    document.querySelectorAll(".node").forEach(node => {
+      node.addEventListener("click", () => {
+        const key = node.getAttribute("data-node");
+        const details = NODE_DETAILS[key];
+        if (!details) return;
+
+        document.getElementById("drawerTitle").textContent = details.title;
+        document.getElementById("drawerFile").textContent = details.file;
+        document.getElementById("drawerDesc").textContent = details.desc;
+
+        const methodsList = document.getElementById("drawerMethods");
+        methodsList.innerHTML = "";
+        details.methods.forEach(m => {
+          const li = document.createElement("li");
+          li.textContent = m;
+          methodsList.appendChild(li);
+        });
+
+        document.getElementById("drawerConstraints").textContent = details.constraints;
+        drawer.classList.add("open");
+      });
+    });
+
+    document.getElementById("drawerClose").addEventListener("click", () => {
+      drawer.classList.remove("open");
+    });
+
+    const searchBox = document.getElementById("searchBox");
+    searchBox.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      document.querySelectorAll(".node").forEach(node => {
+        const text = node.textContent.toLowerCase();
+        if (!q) {
+          node.classList.remove("highlight", "dimmed");
+        } else if (text.includes(q)) {
+          node.classList.add("highlight");
+          node.classList.remove("dimmed");
+        } else {
+          node.classList.remove("highlight");
+          node.classList.add("dimmed");
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design tokens ──────────────────────────────────────────────────────────
+   Institutional dark palette for a financial analysis workspace.
+   Colors chosen for contrast and hierarchy, not decoration.
+───────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Core palette */
+  --navy:       #0B1220;
+  --indigo:     #172554;
+  --blue:       #3B82F6;
+  --blue-light: #60A5FA;
+  --gold:       #D6A84F;
+  --gold-light: #EAC580;
+  --silver:     #F1F5F9;
+  --muted:      #94A3B8;
+  --coral:      #F87171;
+  --coral-dim:  #FCA5A5;
+
+  /* Surfaces */
+  --surface-0:  #0B1220;   /* page background */
+  --surface-1:  #111827;   /* card / panel */
+  --surface-2:  #1E293B;   /* nested elements */
+  --surface-3:  #334155;   /* hover, active bg */
+
+  /* Borders */
+  --border:     #1E293B;
+  --border-md:  #334155;
+
+  /* Text */
+  --text-primary:   #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-accent:    #D6A84F;
+
+  /* Status */
+  --positive: #34D399;
+  --warning:  #FBBF24;
+  --danger:   #F87171;
+}
+
+/* ─── Base reset ─────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    background-color: var(--surface-0);
+    color: var(--text-primary);
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Tabular numerals for financial figures */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    letter-spacing: 0;
+  }
+
+  /* Input resets */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] { -moz-appearance: textfield; }
+
+  /* Slider styling */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--surface-3);
+    cursor: pointer;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    background: var(--blue);
+    border: 2px solid var(--surface-1);
+    box-shadow: 0 0 0 2px var(--blue);
+    cursor: pointer;
+  }
+  input[type="range"]:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px var(--blue-light);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    background: var(--blue);
+    border: 2px solid var(--surface-1);
+    cursor: pointer;
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+  }
+
+  /* Scrollbar (webkit) */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface-0); }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+}
+
+/* ─── Utility classes ────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-gold   { color: var(--gold); }
+  .text-coral  { color: var(--coral); }
+  .text-muted  { color: var(--muted); }
+  .text-silver { color: var(--silver); }
+
+  .bg-surface-1 { background-color: var(--surface-1); }
+  .bg-surface-2 { background-color: var(--surface-2); }
+  .bg-surface-3 { background-color: var(--surface-3); }
+
+  .border-subtle { border-color: var(--border); }
+  .border-md     { border-color: var(--border-md); }
+
+  /* Score bar fill animation */
+  .score-bar-fill {
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
