@@ -21,6 +21,9 @@ export type MatchRequestBody = {
   useLiveModel?: boolean;
 };
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 30;
+
 export async function POST(request: Request) {
   try {
     const body: MatchRequestBody = await request.json();

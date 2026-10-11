@@ -7,6 +7,8 @@ import { BORROWER_OPPORTUNITIES } from "@/lib/data";
  * Returns sanitized synthetic borrower opportunity listings.
  * Phase 3 endpoint supporting end-to-end integration and external consumers.
  */
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
